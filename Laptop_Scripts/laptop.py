@@ -5,7 +5,7 @@ import paho.mqtt.client as mqtt
 from datetime import datetime
 
 
-BROKER = "test.mosquitto.org"
+BROKER = "10.143.170.254"
 TOPIC = "devices/battery"
 CLIENT_ID = "LaptopBatteryPublisher"
 DEVICE_NAME = "Laptop"
