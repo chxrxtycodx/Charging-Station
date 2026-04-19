@@ -33,9 +33,7 @@ def on_disconnect(client, userdata, disconnect_flags, reason_code, properties):
 client.on_connect = on_connect
 client.on_disconnect = on_disconnect
 
-# -----------------------------
 # BATTERY READ FUNCTION
-# -----------------------------
 def get_battery_payload():
     battery = psutil.sensors_battery()
 
