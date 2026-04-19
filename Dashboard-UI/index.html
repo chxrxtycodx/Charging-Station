@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Battery Hub</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro", system-ui, sans-serif;
+            background: linear-gradient(180deg, #8fb0e8, #6d8ac7);
+            color: #222;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 16px;
+            font-size: 22px;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+            text-align: center;
+            position: relative;
+        }
+
+        #settings-btn {
+            position: absolute;
+            right: 16px;
+            top: 12px;
+            font-size: 22px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            opacity: 0.55;
+            font-weight: 600;
+        }
+
+        #settings-btn:hover {
+            opacity: 0.9;
+        }
+
+        #status {
+            text-align: center;
+            padding: 8px;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        #devices {
+            padding: 20px;
+            max-width: 900px;
+            margin: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .device {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            padding: 16px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .device-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .device-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .edit-btn {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: none;
+            background: #e0e0e0;
+            cursor: pointer;
+        }
+
+        .device-category {
+            font-size: 14px;
+            opacity: 0.7;
+            margin-bottom: 8px;
+        }
+
+        .battery-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+
+        .battery-bar {
+            height: 10px;
+            border-radius: 6px;
+            background: #e0e0e0;
+            overflow: hidden;
+        }
+
+        .battery-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.3s ease;
+        }
+
+        #chart-container {
+            max-width: 700px;
+            margin: 20px auto;
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        #chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        #settings-panel {
+            position: fixed;
+            bottom: -300px;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border-radius: 20px 20px 0 0;
+            padding: 20px;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+            transition: bottom 0.3s ease;
+        }
+
+        #settings-panel label {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+
+        #settings-panel select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 6px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+
+        #close-settings {
+            margin-top: 14px;
+            width: 100%;
+            padding: 10px;
+            border-radius: 10px;
+            border: none;
+            background: #d0d0d0;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        My Hub
+        <button id="settings-btn" onclick="openSettings()">⚙︎</button>
+    </header>
+
+    <div id="status">Connecting…</div>
+
+    <div id="devices"></div>
+
+    <div id="chart-container">
+        <div id="chart-title">Battery Trends</div>
+        <canvas id="chart" height="150"></canvas>
+    </div>
+
+    <div id="settings-panel">
+        <label>Graph Update Frequency</label>
+        <select id="update-rate">
+            <option value="10000">Every 10 seconds</option>
+            <option value="300000">Every 5 minutes</option>
+            <option value="900000">Every 15 minutes</option>
+            <option value="1800000">Every 30 minutes</option>
+            <option value="3600000">Every 1 hour</option>
+            <option value="10800000">Every 3 hours</option>
+            <option value="21600000">Every 6 hours</option>
+        </select>
+
+        <button id="close-settings" onclick="closeSettings()">Close</button>
+    </div>
+
+    <script>
+        const BROKER = "test.mosquitto.org";
+        const PORT = 8081;
+        const TOPIC = "devices/battery";
+
+        let devices = {};
+        let chart = null;
+        let updateInterval = 10000;
+
+        let editing = null;
+
+        function updateStatus(text) {
+            document.getElementById("status").textContent = text;
+        }
+
+        function openSettings() {
+            document.getElementById("settings-panel").style.bottom = "0px";
+        }
+
+        function closeSettings() {
+            updateInterval = parseInt(document.getElementById("update-rate").value);
+            document.getElementById("settings-panel").style.bottom = "-300px";
+        }
+
+        function formatTime(date) {
+            return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+        }
+
+        function connectMQTT() {
+            const client = new Paho.MQTT.Client(
+                BROKER,
+                PORT,
+                "/mqtt",
+                "bh_" + Math.random().toString(36).slice(2)
+            );
+
+            client.onConnectionLost = () => {
+                updateStatus("Disconnected — reconnecting…");
+                setTimeout(connectMQTT, 3000);
+            };
+
+            client.onMessageArrived = msg => {
+                try {
+                    const data = JSON.parse(msg.payloadString);
+                    if (data.device && data.percent != null) handleData(data);
+                } catch { }
+            };
+
+            updateStatus("Connecting…");
+
+            client.connect({
+                useSSL: true,
+                onSuccess: () => {
+                    updateStatus("Connected");
+                    client.subscribe(TOPIC);
+                },
+                onFailure: () => {
+                    updateStatus("Failed — retrying…");
+                    setTimeout(connectMQTT, 3000);
+                }
+            });
+        }
+
+        function handleData(d) {
+            const id = d.device;
+            const pct = d.percent;
+
+            if (!devices[id]) {
+                devices[id] = {
+                    id,
+                    name: id,
+                    category: id,
+                    hist: [],
+                    time: [],
+                    lastUpdated: null
+                };
+            }
+
+            devices[id].percent = pct;
+            devices[id].plugged = d.plugged;
+            devices[id].lastUpdated = new Date();
+
+            devices[id].hist.push(pct);
+            devices[id].time.push(new Date());
+
+            if (devices[id].hist.length > 40) {
+                devices[id].hist.shift();
+                devices[id].time.shift();
+            }
+
+            renderDevices();
+            renderChart();
+        }
+
+        function batteryColor(pct) {
+            if (pct >= 70) return "#34c759";
+            if (pct >= 30) return "#ff9500";
+            return "#ff3b30";
+        }
+
+        function renderDevices() {
+            const box = document.getElementById("devices");
+            box.innerHTML = "";
+
+            Object.values(devices).forEach(dev => {
+
+                // ⛔ Do NOT re-render the device currently being edited
+                if (editing === dev.id) return;
+
+                const updated = dev.lastUpdated ? formatTime(dev.lastUpdated) : "—";
+
+                const div = document.createElement("div");
+                div.className = "device";
+
+                div.innerHTML = `
+                    <div class="device-title-row">
+                        <div class="device-title" id="name-${dev.id}">${dev.name}</div>
+                        <button class="edit-btn" onclick="editName('${dev.id}')">Edit</button>
+                    </div>
+
+                    <div class="device-category" id="cat-${dev.id}">
+                        Device Type: ${dev.category}
+                        <button class="edit-btn" style="margin-left:8px;" onclick="editCategory('${dev.id}')">Edit</button>
+                    </div>
+
+                    <div class="battery-row">
+                        <span>Battery</span>
+                        <span>${dev.percent}%</span>
+                    </div>
+
+                    <div class="battery-bar">
+                        <div class="battery-fill" style="width:${dev.percent}%; background:${batteryColor(dev.percent)}"></div>
+                    </div>
+
+                    <div style="margin-top:8px; font-size:14px; opacity:0.7;">
+                        ${dev.plugged ? "Charging" : "Not charging"}
+                    </div>
+
+                    <div style="margin-top:4px; font-size:13px; opacity:0.6;">
+                        Last updated at ${updated}
+                    </div>
+                `;
+
+                box.appendChild(div);
+            });
+        }
+
+        function editName(id) {
+            editing = id;
+
+            const el = document.getElementById(`name-${id}`);
+            const current = devices[id].name;
+
+            el.outerHTML = `
+                <input id="edit-name-${id}" value="${current}"
+                       style="font-size:18px; padding:4px; width:70%; border-radius:6px;">
+                <button class="edit-btn" onclick="saveName('${id}')">Save</button>
+            `;
+        }
+
+        function saveName(id) {
+            const newName = document.getElementById(`edit-name-${id}`).value.trim();
+            if (newName.length > 0) devices[id].name = newName;
+
+            editing = null;
+
+            renderDevices();
+            renderChart();
+        }
+
+        function editCategory(id) {
+            editing = id;
+
+            const el = document.getElementById(`cat-${id}`);
+            const current = devices[id].category;
+
+            el.outerHTML = `
+                <div id="cat-${id}">
+                    Device Type:
+                    <input id="edit-cat-${id}" value="${current}"
+                           style="font-size:14px; padding:4px; width:60%; border-radius:6px;">
+                    <button class="edit-btn" onclick="saveCategory('${id}')">Save</button>
+                </div>
+            `;
+        }
+
+        function saveCategory(id) {
+            const newCat = document.getElementById(`edit-cat-${id}`).value.trim();
+            if (newCat.length > 0) devices[id].category = newCat;
+
+            editing = null;
+
+            renderDevices();
+        }
+
+        function renderChart() {
+            const datasets = Object.values(devices).map((dev, i) => ({
+                label: dev.name,
+                data: dev.hist.map((v, idx) => ({
+                    x: dev.time[idx],
+                    y: v
+                })),
+                borderColor: ["#3a7bd5", "#34c759", "#ff9500", "#a855f7"][i % 4],
+                fill: false,
+                tension: 0.3
+            }));
+
+            const startOfDay = new Date();
+            startOfDay.setHours(0, 0, 0, 0);
+
+            const endOfDay = new Date();
+            endOfDay.setHours(23, 59, 59, 999);
+
+            if (!chart) {
+                chart = new Chart(document.getElementById("chart"), {
+                    type: "line",
+                    data: { datasets },
+                    options: {
+                        responsive: true,
+                        animation: false,
+                        scales: {
+                            x: {
+                                type: "time",
+                                min: startOfDay,
+                                max: endOfDay,
+                                time: {
+                                    unit: "hour",
+                                    displayFormats: { hour: "h a" }
+                                }
+                            },
+                            y: {
+                                min: 0,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: "Battery %"
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                chart.data.datasets = datasets;
+                chart.update();
+            }
+        }
+
+        setInterval(() => {
+            renderChart();
+        }, updateInterval);
+
+        connectMQTT();
+    </script>
+</body>
+
+</html>
