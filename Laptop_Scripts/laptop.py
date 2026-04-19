@@ -8,7 +8,7 @@ import paho.mqtt.client as mqtt
 # MQTT CONFIG
 BROKER = "10.143.170.254"
 PORT = 1883
-TOPIC = "OSORO/devices/battery/laptop"
+TOPIC = "OSOROC/devices/battery/laptop"
 CLIENT_ID = f"laptop-battery-{platform.node()}"
 
 # Optional if your broker requires login
