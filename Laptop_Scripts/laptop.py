@@ -47,7 +47,7 @@ def get_battery_payload():
         }
 
     return {
-        "device_name": DEVICE_NAME,
+        "device": DEVICE_NAME,
         "percent": battery.percent,
         "plugged": battery.power_plugged,
         "timestamp": current_time
