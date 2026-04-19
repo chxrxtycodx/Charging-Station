@@ -1,90 +1,86 @@
 import time
 import json
 import platform
-from datetime import datetime
-
-import psutil
 import paho.mqtt.client as mqtt
+from datetime import datetime
+import psutil
 
 # -----------------------------
 # MQTT CONFIG
 # -----------------------------
 BROKER = "10.143.170.254"
 PORT = 1883
-TOPIC = "devices/laptop/battery"
+TOPIC = "OSOROC/devices/laptop/battery"
 CLIENT_ID = f"laptop-battery-{platform.node()}"
 
-# Optional if your broker requires login
 USERNAME = None
 PASSWORD = None
 
 # -----------------------------
 # DEVICE CONFIG
 # -----------------------------
-DEVICE_NAME = platform.node()
-PUBLISH_INTERVAL = 60  # seconds
-
-# -----------------------------
-# MQTT SETUP
-# -----------------------------
-client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=CLIENT_ID)
-
-if USERNAME and PASSWORD:
-    client.username_pw_set(USERNAME, PASSWORD)
-
-def on_connect(client, userdata, flags, reason_code, properties):
-    print(f"Connected to MQTT broker with code: {reason_code}")
-
-def on_disconnect(client, userdata, disconnect_flags, reason_code, properties):
-    print(f"Disconnected from MQTT broker with code: {reason_code}")
-
-client.on_connect = on_connect
-client.on_disconnect = on_disconnect
+DEVICE_NAME = "laptop"
+PUBLISH_INTERVAL = 10
 
 # -----------------------------
 # BATTERY READ FUNCTION
 # -----------------------------
-def get_battery_payload():
+def get_battery_info():
     battery = psutil.sensors_battery()
-
     if battery is None:
-        return {
-            "device_name": DEVICE_NAME,
-            "battery_available": False,
-            "timestamp": datetime.now().isoformat()
-        }
-
+        return None
     return {
-        "device_name": DEVICE_NAME,
-        "battery_available": True,
         "percent": battery.percent,
-        "charging": battery.power_plugged,
-        "seconds_left": battery.secsleft,
-        "timestamp": datetime.now().isoformat()
+        "plugged": battery.power_plugged
     }
 
 # -----------------------------
 # MAIN LOOP
 # -----------------------------
 def main():
-    client.connect(BROKER, PORT, 60)
-    client.loop_start()
+    client = mqtt.Client(
+        client_id=CLIENT_ID,
+        protocol=mqtt.MQTTv311
+    )
 
-    try:
-        while True:
-            payload = get_battery_payload()
-            payload_str = json.dumps(payload)
+    if USERNAME and PASSWORD:
+        client.username_pw_set(USERNAME, PASSWORD)
 
-            result = client.publish(TOPIC, payload_str)
-            print("Published:", payload_str, "| MQTT rc =", result.rc)
+    def on_connect(client, userdata, flags, rc):
+        print(f"Connected to MQTT broker with code: {rc}")
 
-            time.sleep(PUBLISH_INTERVAL)
+    def on_disconnect(client, userdata, rc):
+        print(f"Disconnected from MQTT broker with code: {rc}")
 
-    except KeyboardInterrupt:
-        print("Stopping publisher...")
-    finally:
-        client.loop_stop()
-        client.disconnect()
+    client.on_connect = on_connect
+    client.on_disconnect = on_disconnect
+
+    while True:
+        try:
+            client.connect(BROKER, PORT, 60)
+            client.loop_start()
+
+            while True:
+                info = get_battery_info()
+                if info:
+                    timestamp = datetime.now().strftime("%m:%d:%H:%M:%S")
+                    payload = {
+                        "device": DEVICE_NAME,
+                        "percent": info["percent"],
+                        "plugged": info["plugged"],
+                        "timestamp": timestamp
+                    }
+                    client.publish(TOPIC, json.dumps(payload))
+                    print("Published:", json.dumps(payload))
+                else:
+                    print("No battery detected")
+
+                time.sleep(PUBLISH_INTERVAL)
+
+        except Exception as e:
+            print(f"Error: {e}, retrying in 5s...")
+            client.loop_stop()
+            time.sleep(5)
 
 if __name__ == "__main__":
     main()
