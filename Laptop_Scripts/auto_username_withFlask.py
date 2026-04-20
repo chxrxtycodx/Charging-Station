@@ -87,7 +87,7 @@ def mqtt_loop():
 
             while True:
                 info = get_battery_info()
-                topic = f"{USERNAME_PREFIX}/devices/laptop/battery"
+                topic = "OSOROC/devices/battery"
 
                 if info:
                     timestamp = datetime.now().strftime("%m:%d:%H:%M:%S")

@@ -70,7 +70,7 @@ def publish_to_led():
             "plugged": True
         })
 
-    client.publish("devices/battery", payload)
+    client.publish("OSOROC/devices/battery", payload)
     print(f"[LED] Published: {payload}")
 
 # -----------------------------
