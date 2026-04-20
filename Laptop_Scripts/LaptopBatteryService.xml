@@ -1,0 +1,16 @@
+<service>
+  <id>LaptopBatteryPublisher</id>
+  <name>Laptop Battery Publisher</name>
+  <description>Publishes laptop battery data when presence is detected.</description>
+
+  <executable>C:\Python313\python.exe</executable>
+  <arguments>C:\Users\r1519\Downloads\Charging-Station\Laptop_Scripts\laptop_publisher.py</arguments>
+
+  <workingdirectory>C:\Users\r1519\Downloads\Charging-Station\Laptop_Scripts</workingdirectory>
+
+  <logpath>C:\Users\r1519\Downloads\Charging-Station\Laptop_Scripts\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+</service>
