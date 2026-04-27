@@ -2,258 +2,308 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Battery Hub</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Battery Hub</title>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui;
-      background: linear-gradient(#8fb0e8, #6d8ac7)
-    }
+    <style>
+        body {
+            margin: 0;
+            font-family: system-ui;
+            background: linear-gradient(#8fb0e8, #6d8ac7)
+        }
 
-    header,
-    #status {
-      backdrop-filter: blur(10px);
-      text-align: center
-    }
+        header,
+        #status {
+            backdrop-filter: blur(10px);
+            text-align: center
+        }
 
-    header {
-      padding: 16px;
-      font-size: 22px;
-      background: #fff9;
-      position: relative
-    }
+        header {
+            padding: 16px;
+            font-size: 22px;
+            background: #fff9;
+            position: relative
+        }
 
-    #status {
-      padding: 8px;
-      font-size: 14px;
-      background: #fff6
-    }
+        #status {
+            padding: 8px;
+            font-size: 14px;
+            background: #fff6
+        }
 
-    #devices {
-      padding: 20px;
-      max-width: 900px;
-      margin: auto;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 16px
-    }
+        #devices {
+            padding: 20px;
+            max-width: 900px;
+            margin: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px
+        }
 
-    .device {
-      background: #fff9;
-      padding: 16px;
-      border-radius: 16px
-    }
+        .device {
+            background: #fff9;
+            padding: 16px;
+            border-radius: 16px
+        }
 
-    .battery-bar {
-      height: 10px;
-      background: #ddd;
-      border-radius: 6px;
-      overflow: hidden
-    }
+        .battery-bar {
+            height: 10px;
+            background: #ddd;
+            border-radius: 6px;
+            overflow: hidden
+        }
 
-    .battery-fill {
-      height: 100%;
-      transition: .3s
-    }
+        .battery-fill {
+            height: 100%;
+            transition: .3s
+        }
 
-    #chart-container {
-      max-width: 700px;
-      margin: 20px auto;
-      background: #fff9;
-      padding: 20px;
-      border-radius: 16px
-    }
+        #chart-container {
+            max-width: 700px;
+            margin: 20px auto;
+            background: #fff9;
+            padding: 20px;
+            border-radius: 16px
+        }
 
-    #settings-btn {
-      position: absolute;
-      right: 16px;
-      top: 12px;
-      font-size: 22px;
-      background: none;
-      border: none;
-      cursor: pointer
-    }
+        #settings-btn {
+            position: absolute;
+            right: 16px;
+            top: 12px;
+            font-size: 22px;
+            background: none;
+            border: none;
+            cursor: pointer
+        }
 
-    #settings {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: -300px;
-      background: #fff;
-      padding: 20px;
-      border-radius: 20px 20px 0 0;
-      box-shadow: 0 -4px 20px rgba(0, 0, 0, .15);
-      transition: bottom .3s ease;
-    }
+        #settings {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: -550px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, .15);
+            transition: bottom .3s ease;
+        }
 
-    #settings.open {
-      bottom: 0
-    }
-  </style>
+        #settings.open {
+            bottom: 0
+        }
+
+        .setting-field {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .setting-field label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .setting-field input,
+        .setting-field select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+    </style>
 </head>
 
 <body>
+    <header>
+        My Hub
+        <button id="settings-btn" onclick="toggleSettings()">⚙</button>
+    </header>
 
-  <header>
-    My Hub
-    <button id="settings-btn" onclick="toggleSettings()">⚙</button>
-  </header>
+    <div id="status">Connecting…</div>
+    <div id="devices"></div>
 
-  <div id="status">Connecting…</div>
-  <div id="devices"></div>
+    <div id="chart-container">
+        <canvas id="chart"></canvas>
+        <button onclick="chart.resetZoom()" style="margin-top:10px">Reset Zoom</button>
+    </div>
 
-  <div id="chart-container">
-    <canvas id="chart"></canvas>
-  </div>
-
-  <div id="settings">
-    <select id="rate">
-      <option value="10000">10s</option>
-      <option value="300000">5m</option>
-      <option value="900000">15m</option>
-    </select>
-    <button onclick="applySettings()">Apply</button>
-    <button onclick="closeSettings()">Close</button>
-  </div>
-
-  <script>
-    const BROKER = "10.143.170.254", PORT = 9001, TOPIC = "OSOROC/devices/battery/#";
-
-    let devices = {}, chart, timer, interval = 10000, client;
-
-    const $ = id => document.getElementById(id);
-    const status = t => $("status").textContent = t;
-
-    function toggleSettings() { $("settings").classList.toggle("open"); }
-    function closeSettings() { $("settings").classList.remove("open"); }
-
-    function applySettings() {
-      interval = +$("rate").value;
-      clearInterval(timer);
-      timer = setInterval(renderChart, interval);
-      closeSettings();
-    }
-
-    // Parse timestamp "MM:dd:HH:mm:ss"
-    function parseTimestamp(ts) {
-      const [MM, dd, HH, mm, ss] = ts.split(":").map(Number);
-      const now = new Date();
-      const year = now.getFullYear();
-      return new Date(year, MM - 1, dd, HH, mm, ss);
-    }
-
-    function connect() {
-      if (client) try { client.disconnect() } catch { }
-      client = new Paho.MQTT.Client(BROKER, PORT, "/mqtt", "bh_" + Math.random());
-
-      client.onConnectionLost = () => { status("Reconnecting…"); setTimeout(connect, 3000) };
-      client.onMessageArrived = m => {
-        try {
-          const d = JSON.parse(m.payloadString);
-          const name = d.device || d.device_name;
-          if (name && d.percent != null) update({ ...d, device: name });
-        } catch { }
-      };
-
-      status("Connecting…");
-      client.connect({
-        onSuccess: () => { status("Connected"); client.subscribe(TOPIC) },
-        onFailure: () => { status("Retrying…"); setTimeout(connect, 3000) }
-      });
-    }
-
-    function update(d) {
-      const dev = devices[d.device] ||= { name: d.device, hist: [], time: [] };
-
-      const ts = parseTimestamp(d.timestamp);
-
-      Object.assign(dev, {
-        percent: Number(d.percent),
-        plugged: d.plugged,
-        last: ts
-      });
-
-      dev.hist.push(Number(d.percent));
-      dev.time.push(ts);
-
-      renderDevices();
-      renderChart();
-    }
-
-    const color = p => p >= 70 ? "#34c759" : p >= 30 ? "#ff9500" : "#ff3b30";
-
-    function renderDevices() {
-      $("devices").innerHTML = Object.values(devices).length
-        ? Object.values(devices).map(d => `
-      <div class="device">
-        <b>${d.name}</b><br>
-        <span style="font-size:28px;color:${color(d.percent)}">${d.percent}%</span>
-        <div class="battery-bar">
-          <div class="battery-fill" style="width:${d.percent}%;background:${color(d.percent)}"></div>
+    <div id="settings">
+        <h3>System Settings</h3>
+        <div class="setting-field">
+            <label>Update Interval</label>
+            <select id="rate">
+                <option value="5">5 Seconds</option>
+                <option value="10">10 Seconds</option>
+                <option value="300">5 Minutes</option>
+                <option value="1500">15 Minutes</option>
+                <option value="3000">30 Minutes</option>
+                <option value="6000">1 Hour</option>
+            </select>
         </div>
-        <small>${d.plugged ? "⚡ Charging" : "Battery"} | ${d.last?.toLocaleTimeString() || ""}</small>
-      </div>
-    `).join("")
-        : `<div style="text-align:center">Waiting for devices…</div>`;
-    }
+        <div class="setting-field">
+            <label>Speaker Alert Interval (Seconds)</label>
+            <input type="number" id="speakerInterval" value="60">
+        </div>
+        <div class="setting-field">
+            <label>Light Dim Percentage (%)</label>
+            <input type="number" id="dimPercent" value="50">
+        </div>
+        <div class="setting-field">
+            <label>Low Battery Threshold (%)</label>
+            <input type="number" id="lowBatteryThreshold" value="20">
+        </div>
+        <div class="setting-field">
+            <label>Script End Time</label>
+            <input type="time" id="endTime" value="23:00">
+        </div>
+        <button onclick="applySettings()"
+            style="width:100%; padding:10px; background:#007AFF; color:white; border:none; border-radius:8px;">Apply &
+            Send</button>
+        <button onclick="closeSettings()"
+            style="width:100%; padding:10px; margin-top:5px; background:#ddd; border:none; border-radius:8px;">Close</button>
+    </div>
 
-    function renderChart() {
-      const data = Object.values(devices).map((d, i) => ({
-        label: d.name,
-        data: d.hist.map((v, i) => ({ x: d.time[i], y: v })),
-        borderColor: ["#3a7bd5", "#34c759", "#ff9500", "#a855f7"][i % 4],
-        tension: .3
-      }));
+    <script>
+        const BROKER = "10.143.170.254", PORT = 9001, TOPIC = "OSOROC/devices/battery/#";
+        let devices = {}, chart, timer, client;
 
-      const minX = (() => {
-        const d = new Date();
-        d.setHours(0, 0, 0, 0);
-        return d;
-      })();
+        const $ = id => document.getElementById(id);
+        const status = t => $("status").textContent = t;
 
-      const maxX = (() => {
-        const d = new Date();
-        d.setHours(12, 0, 0, 0);
-        return d;
-      })();
+        function toggleSettings() { $("settings").classList.toggle("open"); }
+        function closeSettings() { $("settings").classList.remove("open"); }
 
-      if (!chart) {
-        chart = new Chart($("chart"), {
-          type: "line",
-          data: { datasets: data },
-          options: {
-            animation: false,
-            scales: {
-              x: {
-                type: "time",
-                time: {
-                  unit: "hour",
-                  displayFormats: { hour: "h a" }
-                },
-                min: minX,
-                max: maxX
-              },
-              y: { min: 0, max: 100 }
+        function applySettings() {
+            // Get interval in seconds for the JSON, multiply by 1000 for the timer
+            const intervalSecs = parseInt($("rate").value);
+
+            const settings = {
+                updateInterval: intervalSecs,
+                speakerInterval: parseInt($("speakerInterval").value),
+                dimPercentage: parseInt($("dimPercent").value),
+                lowBatteryThreshold: parseInt($("lowBatteryThreshold").value),
+                endTime: $("endTime").value
+            };
+
+            // Publish to MQTT
+            if (client && client.isConnected()) {
+                client.send("OSOROC/setting", JSON.stringify(settings), 0, false);
+                console.log("Settings sent:", settings);
             }
-          }
-        });
-      } else {
-        chart.data.datasets = data;
-        chart.update();
-      }
-    }
 
-    timer = setInterval(renderChart, interval);
-    connect();
-  </script>
+            // Update timer (convert seconds to milliseconds)
+            clearInterval(timer);
+            timer = setInterval(renderChart, intervalSecs * 1000);
 
+            localStorage.setItem('updateInterval', intervalSecs);
+            closeSettings();
+            alert("Settings applied and sent to broker.");
+        }
+
+        // --- Core Logic ---
+
+        function parseTimestamp(ts) {
+            const [MM, dd, HH, mm, ss] = ts.split(":").map(Number);
+            const date = new Date();
+            date.setHours(HH, mm, ss, 0);
+            return date;
+        }
+
+        function connect() {
+            if (client) try { client.disconnect() } catch { }
+            client = new Paho.MQTT.Client(BROKER, PORT, "/mqtt", "bh_" + Math.random());
+            client.onConnectionLost = () => { status("Reconnecting…"); setTimeout(connect, 3000) };
+            client.onMessageArrived = m => {
+                try {
+                    const d = JSON.parse(m.payloadString);
+                    const name = d.device || d.device_name;
+                    if (name && d.percent != null) update({ ...d, device: name });
+                } catch { }
+            };
+            status("Connecting…");
+            client.connect({
+                onSuccess: () => { status("Connected"); client.subscribe(TOPIC) },
+                onFailure: () => { status("Retrying…"); setTimeout(connect, 3000) }
+            });
+        }
+
+        function update(d) {
+            const dev = devices[d.device] ||= { name: d.device, hist: [], time: [] };
+            const ts = parseTimestamp(d.timestamp);
+            Object.assign(dev, { percent: Number(d.percent), plugged: d.plugged, last: ts });
+            dev.hist.push(Number(d.percent));
+            dev.time.push(ts);
+            renderDevices();
+            renderChart();
+        }
+
+        const color = p => p >= 70 ? "#34c759" : p >= 30 ? "#ff9500" : "#ff3b30";
+
+        function renderDevices() {
+            $("devices").innerHTML = Object.values(devices).length
+                ? Object.values(devices).map(d => `
+                    <div class="device">
+                        <b>${d.name}</b><br>
+                        <span style="font-size:28px;color:${color(d.percent)}">${d.percent}%</span>
+                        <div class="battery-bar">
+                            <div class="battery-fill" style="width:${d.percent}%;background:${color(d.percent)}"></div>
+                        </div>
+                        <small>${d.plugged ? "⚡ Charging" : "Battery"} | ${d.last?.toLocaleTimeString() || ""}</small>
+                    </div>
+                `).join("")
+                : `<div style="text-align:center">Waiting for devices…</div>`;
+        }
+
+        function renderChart() {
+            const data = Object.values(devices).map((d, i) => {
+                const lineColor = ["#3a7bd5", "#34c759", "#ff9500", "#a855f7"][i % 4];
+                return {
+                    label: d.name,
+                    data: d.hist.map((v, i) => ({ x: d.time[i], y: v })),
+                    borderColor: lineColor,
+                    pointBackgroundColor: lineColor,
+                    pointRadius: 2,
+                    tension: .3
+                };
+            });
+
+            const minX = new Date(); minX.setHours(0, 0, 0, 0);
+            const maxX = new Date(); maxX.setHours(23, 59, 59, 999);
+
+            if (!chart) {
+                chart = new Chart($("chart"), {
+                    type: "line",
+                    data: { datasets: data },
+                    options: {
+                        animation: false,
+                        plugins: {
+                            zoom: {
+                                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+                                pan: { enabled: true, mode: 'x' }
+                            }
+                        },
+                        scales: {
+                            x: { type: "time", time: { unit: "hour", displayFormats: { hour: "h a" } }, min: minX, max: maxX },
+                            y: { min: 0, max: 100 }
+                        }
+                    }
+                });
+            } else {
+                chart.data.datasets = data;
+                chart.update();
+            }
+        }
+
+        // Initialize at 10s default
+        timer = setInterval(renderChart, 10000);
+        connect();
+    </script>
 </body>
 
 </html>
