@@ -7,7 +7,7 @@ import time
 # -----------------------------
 # Config
 # -----------------------------
-BROKER = "192.168.12.68"
+BROKER = "10.143.170.254"
 PORT = 1883
 THRESHOLD = 25
 BATTERY_SCRIPT = "/home/pi/charging_station/battery_obtain/battery_server.py"

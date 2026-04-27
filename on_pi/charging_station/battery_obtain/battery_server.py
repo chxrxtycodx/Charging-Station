@@ -4,7 +4,7 @@ import json
 
 app = Flask(__name__)
 
-BROKER = "192.168.12.68"
+BROKER = "10.143.170.254"
 PORT = 1883
 
 devices = {}

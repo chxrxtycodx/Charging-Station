@@ -10,7 +10,7 @@ import traceback
 # -----------------------------
 # Config
 # -----------------------------
-BROKER = "192.168.12.68"
+BROKER = "10.143.170.254"
 PORT = 1883
 THRESHOLD = 25
 REMIND_INTERVAL = 300  # 5 minutes
